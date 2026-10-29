@@ -10,6 +10,9 @@ const NotFound = require('stremio/routes/NotFound');
 const { useProfile, useNotifications, useOnScrollToBottom, withCoreSuspender } = require('stremio/common');
 const { default: toPath } = require('stremio-router/toPath');
 const { DelayedRenderer, Chips, Image, MainNavBars, LibItem, MultiselectMenu } = require('stremio/components');
+const { getTmdbApiKey } = require('stremio/common/nextRelease/apiKey');
+const { formatNextReleaseBanner } = require('stremio/common/nextRelease/nextRelease');
+const { default: useNextReleases } = require('stremio/common/nextRelease/useNextReleases');
 const { default: Placeholder } = require('./Placeholder');
 const useLibrary = require('./useLibrary');
 const useSelectableInputs = require('./useSelectableInputs');
@@ -53,6 +56,15 @@ const Library = ({ model }) => {
     const notifications = useNotifications();
     const [library, loadNextPage] = useLibrary(model, urlParams, queryParams);
     const [typeSelect, sortChips, hasNextPage] = useSelectableInputs(library);
+    // "What comes next" banner on Library cards: the next film in the franchise, episode or
+    // season with a date, looked up on TMDB with the key from Settings. Read on every render
+    // (a cheap localStorage read) so a key saved in Settings works without a reload.
+    const tmdbApiKey = model === 'library' ? getTmdbApiKey() : null;
+    const nextReleases = useNextReleases(model === 'library' ? library.catalog : null, tmdbApiKey);
+    // TMDB ids of everything in the library: a recent sequel the user already has is not news.
+    const libraryTmdbIds = React.useMemo(() => (
+        new Set(Object.values(nextReleases).map((result) => result.tmdbId).filter((id) => typeof id === 'number'))
+    ), [nextReleases]);
     const scrollContainerRef = React.useRef(null);
     const onScrollToBottom = React.useCallback(() => {
         if (hasNextPage) {
@@ -109,6 +121,7 @@ const Library = ({ model }) => {
                                                     {...libItem}
                                                     key={index}
                                                     notifications={notifications}
+                                                    nextRelease={model === 'library' ? formatNextReleaseBanner(nextReleases[libItem._id], libraryTmdbIds) : null}
                                                     removable={model === 'library'}
                                                     detailsVideosFirst={model === 'library'}
                                                 />

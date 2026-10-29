@@ -17,9 +17,10 @@ const { default: getMetaDetailsHref } = require('stremio/common/getMetaDetailsHr
 const { ICON_FOR_TYPE } = require('stremio/common/CONSTANTS');
 const styles = require('./styles');
 
-const MetaItem = React.memo(({ className, type, name, poster, posterShape, posterChangeCursor, progress, newVideos, options, actionMenu, deepLinks, href: customHref, dataset, optionOnSelect, onDismissClick, onPlayClick, watched, live, ...props }) => {
+const MetaItem = React.memo(({ className, type, name, nextRelease, poster, posterShape, posterChangeCursor, progress, newVideos, options, actionMenu, deepLinks, href: customHref, dataset, optionOnSelect, onDismissClick, onPlayClick, watched, live, ...props }) => {
     const { t } = useTranslation();
     const artwork = poster && typeof poster === 'object' ? poster : { src: poster, shape: posterShape, changeCursor: posterChangeCursor };
+    const hasBanner = nextRelease !== null && typeof nextRelease === 'object' && typeof nextRelease.label === 'string';
     const { navigateWithOrigin } = useNavigateWithOrigin();
     const [menuOpen, onMenuOpen, onMenuClose] = useBinaryState(false);
     const { hoverProps, isHovered } = useHover({});
@@ -82,7 +83,7 @@ const MetaItem = React.memo(({ className, type, name, poster, posterShape, poste
                 <div className={classnames(styles['poster-container'], { 'poster-change-cursor': artwork.changeCursor })}>
                     {
                         onDismissClick ?
-                            <div title={t('LIBRARY_RESUME_DISMISS')} className={styles['dismiss-icon-layer']} onClick={dismissOnClick}>
+                            <div title={t('LIBRARY_RESUME_DISMISS')} className={classnames(styles['dismiss-icon-layer'], { [styles['below-banner']]: hasBanner })} onClick={dismissOnClick}>
                                 <Icon className={styles['dismiss-icon']} name={'close'} />
                                 <div className={styles['dismiss-icon-backdrop']} />
                             </div>
@@ -91,7 +92,7 @@ const MetaItem = React.memo(({ className, type, name, poster, posterShape, poste
                     }
                     {
                         watched ?
-                            <div className={styles['watched-icon-layer']}>
+                            <div className={classnames(styles['watched-icon-layer'], { [styles['below-banner']]: hasBanner })}>
                                 <Icon className={styles['watched-icon']} name={'checkmark'} />
                             </div>
                             :
@@ -148,6 +149,18 @@ const MetaItem = React.memo(({ className, type, name, poster, posterShape, poste
                             :
                             null
                     }
+                    {
+                        hasBanner ?
+                            <div
+                                className={classnames(styles['next-release-banner'], { [styles['recent']]: nextRelease.tone === 'recent', [styles['ended']]: nextRelease.tone === 'ended' })}
+                                title={nextRelease.title}
+                            >
+                                {typeof nextRelease.icon === 'string' ? <Icon className={styles['icon']} name={nextRelease.icon} /> : null}
+                                <div className={styles['label']}>{nextRelease.label}</div>
+                            </div>
+                            :
+                            null
+                    }
                 </div>
                 {
                     (typeof name === 'string' && name.length > 0) || hasOptions ?
@@ -197,6 +210,13 @@ MetaItem.propTypes = {
     className: PropTypes.string,
     type: PropTypes.string,
     name: PropTypes.string,
+    // "What comes next" banner across the top of the poster: { label, tone: 'upcoming' | 'recent' | 'ended', icon, title }
+    nextRelease: PropTypes.shape({
+        label: PropTypes.string,
+        tone: PropTypes.string,
+        icon: PropTypes.string,
+        title: PropTypes.string,
+    }),
     poster: PropTypes.oneOfType([
         PropTypes.string,
         PropTypes.shape({

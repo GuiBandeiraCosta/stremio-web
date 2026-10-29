@@ -1,11 +1,12 @@
-import React, { forwardRef, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { ChangeEvent, forwardRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCore } from 'stremio/core';
-import { Button, Toggle } from 'stremio/components';
+import { Button, TextInput, Toggle } from 'stremio/components';
 import { usePlatform, useToast, useDiscord } from 'stremio/common';
 import { Section, Option, Link } from '../components';
 import User from './User';
 import useDataExport from './useDataExport';
+import { getTmdbApiKey, setTmdbApiKey } from 'stremio/common/nextRelease/apiKey';
 import styles from './General.less';
 
 type Props = {
@@ -21,6 +22,22 @@ const General = forwardRef<HTMLDivElement, Props>(({ profile }: Props, ref) => {
     const [dataExport, loadDataExport] = useDataExport();
 
     const [traktAuthStarted, setTraktAuthStarted] = useState(false);
+
+    // TMDB key for the "what comes next" banner on Library cards. Personal, kept in
+    // this browser only (localStorage), never sent anywhere but api.themoviedb.org.
+    const [tmdbApiKey, setTmdbApiKeyDraft] = useState(() => getTmdbApiKey() ?? '');
+    const onTmdbApiKeyChange = useCallback(({ target }: ChangeEvent<HTMLInputElement>) => {
+        setTmdbApiKeyDraft(target.value);
+    }, []);
+    const onTmdbApiKeySave = useCallback(() => {
+        setTmdbApiKey(tmdbApiKey);
+        setTmdbApiKeyDraft(getTmdbApiKey() ?? '');
+        toast.show({
+            type: 'success',
+            title: getTmdbApiKey() !== null ? t('SETTINGS_TMDB_API_KEY_SAVED') : t('SETTINGS_TMDB_API_KEY_REMOVED'),
+            timeout: 4000
+        });
+    }, [tmdbApiKey]);
 
     const isTraktAuthenticated = useMemo(() => {
         const trakt = profile?.auth?.user?.trakt;
@@ -160,6 +177,29 @@ const General = forwardRef<HTMLDivElement, Props>(({ profile }: Props, ref) => {
                         />
                     </Option>
             }
+        </Section>
+
+        <Section label={'SETTINGS_WHATS_NEXT'}>
+            <Option className={styles['tmdb-container']} icon={'clock'} label={'SETTINGS_TMDB_API_KEY'}>
+                <div className={styles['tmdb-row']}>
+                    <div className={styles['tmdb-inputs']}>
+                        <TextInput
+                            className={styles['tmdb-input']}
+                            type={'text'}
+                            placeholder={t('SETTINGS_TMDB_API_KEY_PLACEHOLDER')}
+                            value={tmdbApiKey}
+                            onChange={onTmdbApiKeyChange}
+                            onSubmit={onTmdbApiKeySave}
+                        />
+                        <Button className={styles['tmdb-save']} title={t('SETTINGS_TMDB_API_KEY_SAVE')} tabIndex={-1} onClick={onTmdbApiKeySave}>
+                            {t('SETTINGS_TMDB_API_KEY_SAVE')}
+                        </Button>
+                    </div>
+                    <div className={styles['tmdb-hint']}>
+                        {t('SETTINGS_TMDB_API_KEY_HINT')}
+                    </div>
+                </div>
+            </Option>
         </Section>
     </>;
 });
